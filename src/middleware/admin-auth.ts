@@ -53,7 +53,7 @@ export const adminLoginRoutes: FastifyPluginCallback<AdminAuthOptions> = (app, o
     return reply.send({ success: true });
   });
 
-  app.post("/admin/api/logout", async (request, reply) => {
+  app.post("/admin/api/logout", async (_request, reply) => {
     reply.clearCookie("admin_token", { path: "/admin" });
     return reply.send({ success: true });
   });

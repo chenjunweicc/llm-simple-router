@@ -4,3 +4,7 @@ data/
 .env
 *.db
 .DS_Store
+.code-review-graph/
+.claude/
+.mcp.json
+.playwright-mcp/
