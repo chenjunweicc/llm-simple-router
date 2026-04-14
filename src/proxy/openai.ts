@@ -166,6 +166,42 @@ function proxyStream(
   });
 }
 
+// ---------- /v1/models 代理 ----------
+
+function proxyModelsRequest(
+  backend: BackendService,
+  apiKey: string
+): Promise<{ statusCode: number; body: string }> {
+  return new Promise((resolve, reject) => {
+    const url = new URL(`${backend.base_url}/v1/models`);
+
+    const options = {
+      hostname: url.hostname,
+      port: url.port || 80,
+      path: url.pathname,
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+    };
+
+    const req = httpRequestParam(options, (res: IncomingMessage) => {
+      const chunks: Buffer[] = [];
+      res.on("data", (chunk: Buffer) => chunks.push(chunk));
+      res.on("end", () => {
+        resolve({
+          statusCode: res.statusCode || 502,
+          body: Buffer.concat(chunks).toString("utf-8"),
+        });
+      });
+    });
+
+    req.on("error", (err) => reject(err));
+    req.end();
+  });
+}
+
 // ---------- Fastify 插件 ----------
 
 const openaiProxyRaw: FastifyPluginCallback<OpenaiProxyOptions> = (
@@ -269,6 +305,40 @@ const openaiProxyRaw: FastifyPluginCallback<OpenaiProxyOptions> = (
         502
       );
       return reply.status(502).send(errorResp.body);
+    }
+  });
+
+  // GET /v1/models - 透传到 OpenAI 后端的模型列表
+  app.get("/v1/models", async (request, reply) => {
+    const backends = getActiveBackendServices(db, "openai");
+    if (backends.length === 0) {
+      return reply.status(404).send({
+        error: {
+          message: "No active OpenAI backend service configured",
+          type: "invalid_request_error",
+          code: "no_backend",
+        },
+      });
+    }
+
+    const backend = backends[0];
+    const apiKey = decrypt(backend.api_key, encryptionKey);
+
+    try {
+      const result = await proxyModelsRequest(backend, apiKey);
+      return reply.status(result.statusCode).send(result.body);
+    } catch (err: any) {
+      request.log.error(
+        { err },
+        "Failed to reach OpenAI backend for /v1/models"
+      );
+      return reply.status(502).send({
+        error: {
+          message: "Failed to reach backend service",
+          type: "server_error",
+          code: "upstream_error",
+        },
+      });
     }
   });
 
