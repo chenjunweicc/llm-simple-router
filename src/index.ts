@@ -116,7 +116,7 @@ async function main() {
   }
 }
 
-const isMainModule = process.argv[1]?.endsWith("index.js");
+const isMainModule = process.argv[1]?.endsWith("index.js") || process.argv[1]?.endsWith("index.ts");
 if (isMainModule) {
   main();
 }
