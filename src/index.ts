@@ -1,11 +1,32 @@
-import Fastify from "fastify";
-import { getConfig } from "./config.js";
+import Fastify, { FastifyInstance } from "fastify";
+import { getConfig, Config } from "./config.js";
+import { initDatabase } from "./db/index.js";
 import { authMiddleware } from "./middleware/auth.js";
 import { openaiProxy } from "./proxy/openai.js";
 import { anthropicProxy } from "./proxy/anthropic.js";
+import Database from "better-sqlite3";
 
-async function main() {
-  const config = getConfig();
+export interface AppOptions {
+  config?: Config;
+  db?: Database.Database;
+}
+
+export async function buildApp(
+  options?: AppOptions
+): Promise<{
+  app: FastifyInstance;
+  db: Database.Database;
+  close: () => Promise<void>;
+}> {
+  const config = options?.config ?? getConfig();
+
+  // 允许外部传入已初始化的 DB（测试用），否则自行创建
+  let db: Database.Database;
+  if (options?.db) {
+    db = options.db;
+  } else {
+    db = initDatabase(config.DB_PATH);
+  }
 
   const app = Fastify({
     logger: {
@@ -13,27 +34,35 @@ async function main() {
     },
   });
 
-  // 注册认证中间件
   app.register(authMiddleware, { apiKey: config.ROUTER_API_KEY });
+  app.register(openaiProxy, {
+    db,
+    encryptionKey: config.ENCRYPTION_KEY,
+    streamTimeoutMs: config.STREAM_TIMEOUT_MS,
+  });
+  app.register(anthropicProxy, {
+    db,
+    encryptionKey: config.ENCRYPTION_KEY,
+    streamTimeoutMs: config.STREAM_TIMEOUT_MS,
+  });
 
   app.get("/health", async () => {
     return { status: "ok" };
   });
 
-  // 注册 OpenAI 代理路由
-  // TODO: Task 6 中注入 db via options
-  app.register(openaiProxy, {
-    db: /* Task 6 注入 */ null as any,
-    encryptionKey: config.ENCRYPTION_KEY,
-    streamTimeoutMs: config.STREAM_TIMEOUT_MS,
-  });
+  return {
+    app,
+    db,
+    close: async () => {
+      await app.close();
+      db.close();
+    },
+  };
+}
 
-  // 注册 Anthropic 代理路由
-  app.register(anthropicProxy, {
-    db: /* Task 6 注入 */ null as any,
-    encryptionKey: config.ENCRYPTION_KEY,
-    streamTimeoutMs: config.STREAM_TIMEOUT_MS,
-  });
+async function main() {
+  const { app } = await buildApp();
+  const config = getConfig();
 
   try {
     await app.listen({ port: config.PORT, host: "0.0.0.0" });
@@ -44,4 +73,7 @@ async function main() {
   }
 }
 
-main();
+const isMainModule = process.argv[1]?.endsWith("index.js");
+if (isMainModule) {
+  main();
+}
