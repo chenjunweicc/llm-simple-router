@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import Fastify from "fastify";
+import Fastify, { type FastifyInstance } from "fastify";
 import { authMiddleware } from "../src/middleware/auth.js";
 
 const VALID_KEY = "sk-router-test-key";
@@ -16,7 +16,7 @@ function buildApp() {
 }
 
 describe("auth middleware", () => {
-  let app: Fastify.FastifyInstance;
+  let app: FastifyInstance;
 
   beforeEach(() => {
     app = buildApp();
