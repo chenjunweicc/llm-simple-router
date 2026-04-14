@@ -74,7 +74,7 @@ describe("initDatabase", () => {
 
     const now = new Date().toISOString();
     expect(() =>
-      db.prepare(
+      db!.prepare(
         `INSERT INTO backend_services (id, name, api_type, base_url, api_key, is_active, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
       ).run("svc-2", "Bad", "invalid_type", "https://example.com", "key", 1, now, now)
@@ -117,7 +117,7 @@ describe("initDatabase", () => {
     ).run("map-1", "gpt-4", "gpt-4-turbo", "svc-1", 1, now);
 
     expect(() =>
-      db.prepare(
+      db!.prepare(
         `INSERT INTO model_mappings (id, client_model, backend_model, backend_service_id, is_active, created_at)
          VALUES (?, ?, ?, ?, ?, ?)`
       ).run("map-2", "gpt-4", "gpt-4o", "svc-1", 1, now)
