@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import Fastify, { FastifyInstance } from "fastify";
+import { FastifyInstance } from "fastify";
 import {
   createServer,
   Server,
