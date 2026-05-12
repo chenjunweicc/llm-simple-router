@@ -39,6 +39,7 @@ export function useProviderPresets(form: { value: { name: string; api_type: stri
     form.value.name = preset.presetName
     form.value.api_type = preset.apiType
     form.value.base_url = preset.baseUrl
+    ;(form.value as any).upstream_path = preset.upstreamPath || ''
     form.value.models = preset.models.map(name => ({
       name,
       context_window: getDefaultContextWindow(name),
